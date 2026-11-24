@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { Search, ShoppingBag, User, Menu, X } from 'lucide-react';
 import './Navbar.css';
@@ -7,57 +7,43 @@ export default function Navbar({ cartCount = 0, overWhiteStripe = false }) {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  const navClass = ({ isActive }) =>
+    `nav-link ${isActive ? 'active' : ''}`;
+
+  const closeMobileMenu = () => setMobileMenuOpen(false);
+
   return (
     <header className={`store-navbar ${overWhiteStripe ? 'has-stripe' : ''}`}>
       <div className="navbar-inner">
-        {/* LEFT: BRAND WORDMARK */}
+
         <Link to="/home" className="navbar-logo">
           PARADOX
         </Link>
 
-        {/* CENTER: NAVIGATION LINKS */}
         <nav className={`navbar-links ${mobileMenuOpen ? 'open' : ''}`}>
-          <NavLink
-            to="/home"
-            className={({ isActive }) =>
-              `nav-link ${isActive ? 'active' : ''}`
-            }
-            onClick={() => setMobileMenuOpen(false)}
-          >
+          <NavLink to="/home" className={navClass} onClick={closeMobileMenu}>
             Home
           </NavLink>
-          <NavLink
-            to="/product"
-            className={({ isActive }) =>
-              `nav-link ${isActive ? 'active' : ''}`
-            }
-            onClick={() => setMobileMenuOpen(false)}
-          >
+
+          <NavLink to="/shop" className={navClass} onClick={closeMobileMenu}>
             Shop
           </NavLink>
-          <a
-            href="#featured"
-            className="nav-link"
-            onClick={() => setMobileMenuOpen(false)}
-          >
+
+          <NavLink to="/about" className={navClass} onClick={closeMobileMenu}>
             About
-          </a>
-          <a
-            href="#featured"
-            className="nav-link"
-            onClick={() => setMobileMenuOpen(false)}
-          >
+          </NavLink>
+
+          <NavLink to="/contact" className={navClass} onClick={closeMobileMenu}>
             Contact
-          </a>
+          </NavLink>
         </nav>
 
-        {/* RIGHT: UTILITY ICONS */}
         <div className="navbar-actions">
           <button
             type="button"
             className="nav-icon-btn"
             aria-label="Search products"
-            onClick={() => navigate('/product')}
+            onClick={() => navigate('/shop')}
           >
             <Search size={18} strokeWidth={1.8} />
           </button>
@@ -76,7 +62,7 @@ export default function Navbar({ cartCount = 0, overWhiteStripe = false }) {
             type="button"
             className="nav-icon-btn"
             aria-label="Account"
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/account')}
           >
             <User size={18} strokeWidth={1.8} />
           </button>
@@ -90,6 +76,7 @@ export default function Navbar({ cartCount = 0, overWhiteStripe = false }) {
             {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
+
       </div>
     </header>
   );
