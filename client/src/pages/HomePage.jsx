@@ -1,5 +1,4 @@
-﻿
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
 
@@ -77,7 +76,7 @@ export default function HomePage() {
     <div className="home-page">
       <div className="hero-diagonal-stripe" aria-hidden="true" />
 
-      <Navbar cartCount={0} overWhiteStripe={true} />
+      <Navbar overWhiteStripe={true} />
 
       <section className="hero-section">
         <img
@@ -204,7 +203,7 @@ export default function HomePage() {
           <button
             type="button"
             className="view-all-btn"
-            onClick={scrollToProducts}
+            onClick={() => navigate('/shop')}
           >
             <span>VIEW ALL</span>
             <ArrowRight size={15} />
@@ -255,4 +254,3 @@ export default function HomePage() {
     </div>
   );
 }
-

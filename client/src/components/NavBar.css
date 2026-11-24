@@ -161,3 +161,15 @@
     transform: none;
   }
 }
+
+.store-navbar.has-stripe .cart-badge {
+  background-color: #0b0b0b;
+  color: #ffffff;
+}
+
+@media (max-width: 860px) {
+  .store-navbar.has-stripe .cart-badge {
+    background-color: #ffffff;
+    color: #0b0b0b;
+  }
+}

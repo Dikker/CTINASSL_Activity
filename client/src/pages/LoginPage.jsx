@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, User } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, User, Phone } from 'lucide-react';
 import './LoginPage.css';
 
-/* Exact Custom PARADOX Display Wordmark SVG */
 function ParadoxWordmark({ className }) {
   return (
     <svg
@@ -13,37 +12,30 @@ function ParadoxWordmark({ className }) {
       xmlns="http://www.w3.org/2000/svg"
       aria-label="PARADOX"
     >
-      {/* P (Extended left stem + sharp geometric bowl) */}
       <path
         d="M14 112V8H66L78 20V56L66 68H27V112H14ZM27 56H60L65 51V25L60 20H27V56Z"
         fill="currentColor"
       />
-      {/* A (Sharp triangle without crossbar) */}
       <path
         d="M96 96L134 18L172 96H157L134 47L111 96H96Z"
         fill="currentColor"
       />
-      {/* R (Sharp geometric bowl + angled leg) */}
       <path
         d="M192 96V18H242L254 30V54L242 66H226L255 96H238L211 66H205V96H192ZM205 55H236L241 50V34L236 29H205V55Z"
         fill="currentColor"
       />
-      {/* A (Sharp triangle without crossbar) */}
       <path
         d="M274 96L312 18L350 96H335L312 47L289 96H274Z"
         fill="currentColor"
       />
-      {/* D (Sharp angular outer corners) */}
       <path
         d="M372 96V18H418L436 36V78L418 96H372ZM385 84H413L423 74V40L413 30H385V84Z"
         fill="currentColor"
       />
-      {/* o (Geometric lowercase ring) */}
       <path
         d="M475 38H495L509 52V82L495 96H475L461 82V52L475 38ZM480 49L473 56V78L480 85H490L497 78V56L490 49H480Z"
         fill="currentColor"
       />
-      {/* X (Bold geometric cross) */}
       <path
         d="M528 18L555 55L527 96H543L563 66L583 96H599L571 55L598 18H582L563 45L544 18H528Z"
         fill="currentColor"
@@ -52,7 +44,6 @@ function ParadoxWordmark({ className }) {
   );
 }
 
-/* Crisp Vector Barcode + Title Case "Paradox" Lockup */
 function ParadoxBarcode({ className }) {
   const bars = [
     { x: 0, w: 6 },
@@ -109,6 +100,34 @@ function ParadoxBarcode({ className }) {
   );
 }
 
+function GmailIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+      <path
+        fill="#EA4335"
+        d="M20 18h-2V9.25L12 13 6 9.25V18H4V6h1.2l6.8 4.25L18.8 6H20v12z"
+      />
+      <path fill="#4285F4" d="M4 6h2v12H4z" />
+      <path fill="#34A853" d="M18 6h2v12h-2z" />
+      <path
+        fill="#FBBC05"
+        d="M6 9.25 4 6h1.2L12 10.25 18.8 6H20l-2 3.25-6 3.75z"
+      />
+    </svg>
+  );
+}
+
+function FacebookIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+      <path
+        fill="#1877F2"
+        d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c5.05-.5 9-4.76 9-9.95z"
+      />
+    </svg>
+  );
+}
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const [isSignUp, setIsSignUp] = useState(false);
@@ -116,21 +135,67 @@ export default function LoginPage() {
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
+    phone: '',
     password: '',
   });
 
   const handleChange = (e) => {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    if (name === 'phone') {
+      const numericValue = value.replace(/\D/g, '').slice(0, 11);
+      setFormData((prev) => ({ ...prev, phone: numericValue }));
+      return;
+    }
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    if (!formData.email.trim() || !formData.password.trim()) {
+      return;
+    }
+
+    if (
+      isSignUp &&
+      (!formData.fullName.trim() || formData.phone.length !== 11)
+    ) {
+      return;
+    }
+
+    const existingUser = JSON.parse(localStorage.getItem('paradox-user') || '{}');
+    localStorage.setItem(
+      'paradox-user',
+      JSON.stringify({
+        fullName:
+          formData.fullName.trim() ||
+          existingUser.fullName ||
+          formData.email.split('@')[0],
+        email: formData.email.trim(),
+        phone: formData.phone || existingUser.phone || '',
+        memberSince: existingUser.memberSince || '2026',
+      })
+    );
+
+    navigate('/home');
+  };
+
+  const handleSocialAuth = (provider) => {
+    const existingUser = JSON.parse(localStorage.getItem('paradox-user') || '{}');
+    localStorage.setItem(
+      'paradox-user',
+      JSON.stringify({
+        fullName: existingUser.fullName || `PARADOX ${provider} Member`,
+        email: existingUser.email || `member@${provider.toLowerCase()}.com`,
+        phone: existingUser.phone || '',
+        memberSince: existingUser.memberSince || '2026',
+      })
+    );
     navigate('/home');
   };
 
   return (
     <div className="login-page">
-      {/* LEFT / TOP DIAGONAL BLACK PANEL */}
       <div className="login-left-panel">
         <ParadoxBarcode className="barcode-top-left" />
 
@@ -148,16 +213,13 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* FOREGROUND T-SHIRT CUTOUT (Positioned low across the bottom seam) */}
       <img
         src="/images/shirt-front.png"
         alt="Paradox Oversized Tee"
         className="foreground-shirt"
       />
 
-      {/* RIGHT / BOTTOM LIGHT FORM PANEL */}
       <div className="login-right-panel">
-        {/* Top-Left Angled HUD Line emerging from the diagonal seam */}
         <svg
           className="hud-line-top"
           viewBox="0 0 360 160"
@@ -172,13 +234,11 @@ export default function LoginPage() {
           />
         </svg>
 
-        {/* Top-Right Crosshairs */}
         <div className="crosshairs-top-right" aria-hidden="true">
           <span>+</span>
           <span>+</span>
         </div>
 
-        {/* Subtle 4-Point Star Watermarks */}
         <svg
           className="star-watermark star-mid"
           viewBox="0 0 100 100"
@@ -194,7 +254,6 @@ export default function LoginPage() {
           <path d="M50 0 C52 38, 62 48, 100 50 C62 52, 52 62, 50 100 C48 62, 38 52, 0 50 C38 48, 48 38, 50 0 Z" />
         </svg>
 
-        {/* Bottom-Right Thick Light-Grey Tech Line */}
         <svg
           className="hud-line-bottom"
           viewBox="0 0 260 360"
@@ -210,30 +269,53 @@ export default function LoginPage() {
           />
         </svg>
 
-        {/* Bottom-Right Barcode */}
         <ParadoxBarcode className="barcode-bottom-right" />
 
-        {/* CENTERED FORM CONTAINER */}
-        <div className="login-form-wrapper">
+        <div className={`login-form-wrapper ${isSignUp ? 'is-signup' : ''}`}>
           <ParadoxWordmark className="brand-wordmark" />
 
-          <form className="login-form" onSubmit={handleSubmit}>
+          <form className="login-form" onSubmit={handleSubmit} autoComplete="off">
             {isSignUp && (
-              <div className="input-group">
-                <label className="input-label">
-                  <span className="label-slash" />
-                  FULL NAME
-                </label>
-                <div className="input-box">
-                  <User size={18} className="input-icon" />
-                  <input
-                    type="text"
-                    name="fullName"
-                    placeholder="Enter your full name"
-                    value={formData.fullName}
-                    onChange={handleChange}
-                    required
-                  />
+              <div className="signup-fields-grid">
+                <div className="input-group">
+                  <label className="input-label">
+                    <span className="label-slash" />
+                    FULL NAME
+                  </label>
+                  <div className="input-box">
+                    <User size={17} className="input-icon" />
+                    <input
+                      type="text"
+                      name="fullName"
+                      placeholder="Enter your full name"
+                      value={formData.fullName}
+                      onChange={handleChange}
+                      autoComplete="one-time-code"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="input-group">
+                  <label className="input-label">
+                    <span className="label-slash" />
+                    PHONE NUMBER
+                  </label>
+                  <div className="input-box">
+                    <Phone size={17} className="input-icon" />
+                    <input
+                      type="tel"
+                      name="phone"
+                      inputMode="numeric"
+                      pattern="[0-9]{11}"
+                      maxLength={11}
+                      placeholder="09XXXXXXXXX"
+                      value={formData.phone}
+                      onChange={handleChange}
+                      autoComplete="one-time-code"
+                      required
+                    />
+                  </div>
                 </div>
               </div>
             )}
@@ -244,13 +326,14 @@ export default function LoginPage() {
                 EMAIL
               </label>
               <div className="input-box">
-                <Mail size={18} className="input-icon" />
+                <Mail size={17} className="input-icon" />
                 <input
                   type="email"
                   name="email"
                   placeholder="Enter your email"
                   value={formData.email}
                   onChange={handleChange}
+                  autoComplete="one-time-code"
                   required
                 />
               </div>
@@ -262,13 +345,14 @@ export default function LoginPage() {
                 PASSWORD
               </label>
               <div className="input-box">
-                <Lock size={18} className="input-icon" />
+                <Lock size={17} className="input-icon" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   name="password"
                   placeholder="Enter your password"
                   value={formData.password}
                   onChange={handleChange}
+                  autoComplete="new-password"
                   required
                 />
                 <button
@@ -277,7 +361,7 @@ export default function LoginPage() {
                   onClick={() => setShowPassword((prev) => !prev)}
                   aria-label="Toggle password visibility"
                 >
-                  {showPassword ? <Eye size={18} /> : <EyeOff size={18} />}
+                  {showPassword ? <Eye size={17} /> : <EyeOff size={17} />}
                 </button>
               </div>
             </div>
@@ -286,6 +370,35 @@ export default function LoginPage() {
               <button type="submit" className="btn-primary">
                 {isSignUp ? 'Create Account' : 'Login'}
               </button>
+
+              {isSignUp && (
+                <>
+                  <div className="divider-or">
+                    <span className="divider-line" />
+                    <span className="divider-text">SIGN UP WITH</span>
+                    <span className="divider-line" />
+                  </div>
+
+                  <div className="social-auth-row">
+                    <button
+                      type="button"
+                      className="btn-social"
+                      onClick={() => handleSocialAuth('Gmail')}
+                    >
+                      <GmailIcon />
+                      <span>Gmail</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-social"
+                      onClick={() => handleSocialAuth('Facebook')}
+                    >
+                      <FacebookIcon />
+                      <span>Facebook</span>
+                    </button>
+                  </div>
+                </>
+              )}
 
               <div className="divider-or">
                 <span className="divider-line" />
@@ -296,7 +409,10 @@ export default function LoginPage() {
               <button
                 type="button"
                 className="btn-secondary"
-                onClick={() => setIsSignUp((prev) => !prev)}
+                onClick={() => {
+                  setIsSignUp((prev) => !prev);
+                  setFormData({ fullName: '', email: '', phone: '', password: '' });
+                }}
               >
                 {isSignUp ? 'Back to Login' : 'Sign Up'}
               </button>

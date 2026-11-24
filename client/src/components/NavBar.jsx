@@ -1,11 +1,31 @@
-﻿import { useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { Search, ShoppingBag, User, Menu, X } from 'lucide-react';
+import { CART_KEY, readStorage, cartCount as getCartCount } from '../data/commerce';
 import './Navbar.css';
 
-export default function Navbar({ cartCount = 0, overWhiteStripe = false }) {
+export default function Navbar({ cartCount, overWhiteStripe = false }) {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [storedCount, setStoredCount] = useState(() =>
+    getCartCount(readStorage(CART_KEY, []))
+  );
+
+  useEffect(() => {
+    const syncCount = () => {
+      setStoredCount(getCartCount(readStorage(CART_KEY, [])));
+    };
+
+    window.addEventListener('paradox-storage-update', syncCount);
+    window.addEventListener('storage', syncCount);
+    return () => {
+      window.removeEventListener('paradox-storage-update', syncCount);
+      window.removeEventListener('storage', syncCount);
+    };
+  }, []);
+
+  const displayCount =
+    typeof cartCount === 'number' ? cartCount : storedCount;
 
   const navClass = ({ isActive }) =>
     `nav-link ${isActive ? 'active' : ''}`;
@@ -55,7 +75,7 @@ export default function Navbar({ cartCount = 0, overWhiteStripe = false }) {
             onClick={() => navigate('/cart')}
           >
             <ShoppingBag size={18} strokeWidth={1.8} />
-            {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
+            {displayCount > 0 && <span className="cart-badge">{displayCount}</span>}
           </button>
 
           <button
