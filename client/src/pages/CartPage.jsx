@@ -2,11 +2,13 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Minus, Plus, Trash2, ArrowRight } from 'lucide-react';
 import Navbar from '../components/NavBar';
+import ConfirmModal from '../components/ConfirmModal';
 import { CART_KEY, readStorage, saveStorage, money, cartTotal, cartCount } from '../data/commerce';
 import './Commerce.css';
 
 export default function CartPage() {
   const [items, setItems] = useState(() => readStorage(CART_KEY, []));
+  const [itemToRemove, setItemToRemove] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -21,12 +23,22 @@ export default function CartPage() {
   };
 
   const changeQuantity = (index, amount) => {
+    const currentQty = Number(items[index].quantity);
+    if (currentQty + amount < 1) {
+      setItemToRemove({ index, item: items[index] });
+      return;
+    }
     const next = [...items];
-    next[index] = { ...next[index], quantity: Math.max(1, Number(next[index].quantity) + amount) };
+    next[index] = { ...next[index], quantity: currentQty + amount };
     updateCart(next);
   };
 
-  const removeItem = (index) => updateCart(items.filter((_, i) => i !== index));
+  const confirmRemoveItem = () => {
+    if (!itemToRemove) return;
+    updateCart(items.filter((_, i) => i !== itemToRemove.index));
+    setItemToRemove(null);
+  };
+
   const subtotal = cartTotal(items);
 
   return (
@@ -68,7 +80,11 @@ export default function CartPage() {
                         <span>{item.quantity}</span>
                         <button type="button" onClick={() => changeQuantity(index, 1)} aria-label="Increase quantity"><Plus size={13} /></button>
                       </div>
-                      <button className="commerce-remove" type="button" onClick={() => removeItem(index)}>
+                      <button
+                        className="commerce-remove"
+                        type="button"
+                        onClick={() => setItemToRemove({ index, item })}
+                      >
                         <Trash2 size={13} /> REMOVE
                       </button>
                     </div>
@@ -92,6 +108,22 @@ export default function CartPage() {
           </div>
         )}
       </section>
+
+      <ConfirmModal
+        open={Boolean(itemToRemove)}
+        eyebrow="PARADOX / BAG"
+        title="REMOVE ITEM?"
+        message={
+          itemToRemove
+            ? `Remove "${itemToRemove.item.name}" (Size ${itemToRemove.item.size}) from your shopping bag?`
+            : ''
+        }
+        confirmLabel="REMOVE"
+        cancelLabel="KEEP ITEM"
+        danger
+        onConfirm={confirmRemoveItem}
+        onCancel={() => setItemToRemove(null)}
+      />
     </main>
   );
 }

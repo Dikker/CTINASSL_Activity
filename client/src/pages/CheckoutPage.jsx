@@ -1,8 +1,23 @@
 ﻿import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/NavBar';
-import { CART_KEY, ORDERS_KEY, LAST_ORDER_KEY, readStorage, saveStorage, money, cartTotal } from '../data/commerce';
+import ConfirmModal from '../components/ConfirmModal';
+import { CART_KEY, ORDERS_KEY, LAST_ORDER_KEY, readStorage, saveStorage, money, cartTotal, cartCount } from '../data/commerce';
 import './Commerce.css';
+
+function createOrderRecord({ form, items, subtotal, shipping, total }) {
+  const timestamp = Date.now();
+  return {
+    id: `PRDX-${timestamp.toString().slice(-8)}`,
+    date: new Date(timestamp).toISOString(),
+    status: 'Order Placed',
+    customer: { ...form },
+    items,
+    subtotal,
+    shipping,
+    total,
+  };
+}
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -13,6 +28,7 @@ export default function CheckoutPage() {
     payment: 'Cash on Delivery', notes: '',
   });
   const [error, setError] = useState('');
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const subtotal = cartTotal(items);
   const shipping = subtotal >= 2000 ? 0 : 100;
@@ -21,7 +37,7 @@ export default function CheckoutPage() {
   const update = (event) =>
     setForm({ ...form, [event.target.name]: event.target.value });
 
-  const placeOrder = (event) => {
+  const handleCheckoutSubmit = (event) => {
     event.preventDefault();
 
     if (!items.length) {
@@ -29,22 +45,25 @@ export default function CheckoutPage() {
       return;
     }
 
-    const order = {
-      id: `PRDX-${Date.now().toString().slice(-8)}`,
-      date: new Date().toISOString(),
-      status: 'Order Placed',
-      customer: { ...form },
+    setError('');
+    setConfirmOpen(true);
+  };
+
+  const finalizeOrder = () => {
+    const order = createOrderRecord({
+      form,
       items,
       subtotal,
       shipping,
       total,
-    };
+    });
 
     const orders = readStorage(ORDERS_KEY, []);
     orders.unshift(order);
     saveStorage(ORDERS_KEY, orders);
     saveStorage(LAST_ORDER_KEY, order);
     saveStorage(CART_KEY, []);
+    setConfirmOpen(false);
     navigate('/order-confirmation');
   };
 
@@ -72,7 +91,7 @@ export default function CheckoutPage() {
           <p className="commerce-subtitle">YOUR DETAILS. YOUR ORDER. ALMOST YOURS.</p>
         </header>
 
-        <form className="checkout-layout" onSubmit={placeOrder}>
+        <form className="checkout-layout" onSubmit={handleCheckoutSubmit}>
           <div className="checkout-main">
             <section className="checkout-section">
               <div className="checkout-section-heading">
@@ -145,6 +164,17 @@ export default function CheckoutPage() {
           </aside>
         </form>
       </section>
+
+      <ConfirmModal
+        open={confirmOpen}
+        eyebrow="PARADOX / ORDER VERIFICATION"
+        title="PLACE ORDER?"
+        message={`Confirm your order of ${cartCount(items)} item(s) totaling ${money(total)} via ${form.payment}?`}
+        confirmLabel="CONFIRM ORDER"
+        cancelLabel="REVIEW DETAILS"
+        onConfirm={finalizeOrder}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </main>
   );
 }

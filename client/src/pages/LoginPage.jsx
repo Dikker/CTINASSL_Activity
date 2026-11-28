@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, User, Phone } from 'lucide-react';
+import OtpVerificationModal from '../components/OtpVerificationModal';
 import './LoginPage.css';
 
 function ParadoxWordmark({ className }) {
@@ -132,6 +133,8 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [authError, setAuthError] = useState('');
+  const [otpOpen, setOtpOpen] = useState(false);
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -139,8 +142,22 @@ export default function LoginPage() {
     password: '',
   });
 
+  const passwordRules = {
+    length: formData.password.length >= 8,
+    upper: /[A-Z]/.test(formData.password),
+    number: /\d/.test(formData.password),
+    special: /[^A-Za-z0-9]/.test(formData.password),
+  };
+
+  const allPasswordRulesMet =
+    passwordRules.length &&
+    passwordRules.upper &&
+    passwordRules.number &&
+    passwordRules.special;
+
   const handleChange = (e) => {
     const { name, value } = e.target;
+    setAuthError('');
     if (name === 'phone') {
       const numericValue = value.replace(/\D/g, '').slice(0, 11);
       setFormData((prev) => ({ ...prev, phone: numericValue }));
@@ -149,20 +166,7 @@ export default function LoginPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-
-    if (!formData.email.trim() || !formData.password.trim()) {
-      return;
-    }
-
-    if (
-      isSignUp &&
-      (!formData.fullName.trim() || formData.phone.length !== 11)
-    ) {
-      return;
-    }
-
+  const finalizeRegistration = () => {
     const existingUser = JSON.parse(localStorage.getItem('paradox-user') || '{}');
     localStorage.setItem(
       'paradox-user',
@@ -176,8 +180,40 @@ export default function LoginPage() {
         memberSince: existingUser.memberSince || '2026',
       })
     );
-
+    setOtpOpen(false);
     navigate('/home');
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setAuthError('');
+
+    if (!formData.email.trim() || !formData.password.trim()) {
+      setAuthError('Please fill in all required fields.');
+      return;
+    }
+
+    if (isSignUp) {
+      if (!formData.fullName.trim()) {
+        setAuthError('Full name is required.');
+        return;
+      }
+
+      if (!/^09\d{9}$/.test(formData.phone)) {
+        setAuthError('Phone number must be 11 digits starting with 09.');
+        return;
+      }
+
+      if (!allPasswordRulesMet) {
+        setAuthError('Password must meet all security requirements.');
+        return;
+      }
+
+      setOtpOpen(true);
+      return;
+    }
+
+    finalizeRegistration();
   };
 
   const handleSocialAuth = (provider) => {
@@ -366,9 +402,28 @@ export default function LoginPage() {
               </div>
             </div>
 
+            {isSignUp && (
+              <div className="signup-policy-grid">
+                <span className={passwordRules.length ? 'met' : ''}>
+                  {passwordRules.length ? '✓' : '•'} 8+ CHARACTERS
+                </span>
+                <span className={passwordRules.upper ? 'met' : ''}>
+                  {passwordRules.upper ? '✓' : '•'} 1 UPPERCASE
+                </span>
+                <span className={passwordRules.number ? 'met' : ''}>
+                  {passwordRules.number ? '✓' : '•'} 1 NUMBER
+                </span>
+                <span className={passwordRules.special ? 'met' : ''}>
+                  {passwordRules.special ? '✓' : '•'} 1 SPECIAL CHAR
+                </span>
+              </div>
+            )}
+
+            {authError && <p className="login-error-msg">{authError}</p>}
+
             <div className="button-stack">
               <button type="submit" className="btn-primary">
-                {isSignUp ? 'Create Account' : 'Login'}
+                {isSignUp ? 'Verify & Create Account' : 'Login'}
               </button>
 
               {isSignUp && (
@@ -411,6 +466,7 @@ export default function LoginPage() {
                 className="btn-secondary"
                 onClick={() => {
                   setIsSignUp((prev) => !prev);
+                  setAuthError('');
                   setFormData({ fullName: '', email: '', phone: '', password: '' });
                 }}
               >
@@ -420,6 +476,16 @@ export default function LoginPage() {
           </form>
         </div>
       </div>
+
+      <OtpVerificationModal
+        open={otpOpen}
+        title="VERIFY NEW ACCOUNT"
+        actionLabel="completing your PARADOX member registration"
+        registeredEmail={formData.email}
+        registeredPhone={formData.phone}
+        onVerified={finalizeRegistration}
+        onCancel={() => setOtpOpen(false)}
+      />
     </div>
   );
 }

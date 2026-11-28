@@ -13,6 +13,7 @@ import {
   Star,
 } from 'lucide-react';
 import Navbar from '../components/NavBar';
+import ConfirmModal from '../components/ConfirmModal';
 import { CART_KEY, readStorage, saveStorage, money } from '../data/commerce';
 import './ProductDetails.css';
 
@@ -92,12 +93,14 @@ export default function ProductDetails() {
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [expandedInfo, setExpandedInfo] = useState('');
+  const [addedConfirmOpen, setAddedConfirmOpen] = useState(false);
 
   const galleryImages = [product.image, product.image, product.image, product.image];
 
+  const chosenColor = product.colors[selectedColor]?.label || product.color;
+
   const addItemToStorage = () => {
     const currentCart = readStorage(CART_KEY, []);
-    const chosenColor = product.colors[selectedColor]?.label || product.color;
 
     const existingItem = currentCart.find(
       (item) =>
@@ -125,6 +128,7 @@ export default function ProductDetails() {
 
   const handleAddToCart = () => {
     addItemToStorage();
+    setAddedConfirmOpen(true);
   };
 
   const handleBuyNow = () => {
@@ -288,6 +292,20 @@ export default function ProductDetails() {
       </section>
 
       <div className="pd-side-star">{'\u2726'}</div>
+
+      <ConfirmModal
+        open={addedConfirmOpen}
+        eyebrow="PARADOX / BAG UPDATED"
+        title="ADDED TO YOUR BAG"
+        message={`${quantity} × ${product.name} (${chosenColor} / Size ${selectedSize}) has been added to your cart.`}
+        confirmLabel="VIEW BAG"
+        cancelLabel="KEEP SHOPPING"
+        onConfirm={() => {
+          setAddedConfirmOpen(false);
+          navigate('/cart');
+        }}
+        onCancel={() => setAddedConfirmOpen(false)}
+      />
     </div>
   );
 }

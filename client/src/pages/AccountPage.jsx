@@ -9,8 +9,14 @@ import {
   ArrowUpRight,
   Check,
   ShoppingBag,
+  Lock,
+  Edit3,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import Navbar from '../components/NavBar';
+import ConfirmModal from '../components/ConfirmModal';
+import OtpVerificationModal from '../components/OtpVerificationModal';
 import { ORDERS_KEY, CART_KEY, readStorage, money, cartCount } from '../data/commerce';
 import './AccountPage.css';
 
@@ -28,6 +34,7 @@ export default function AccountPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('profile');
   const [savedNotice, setSavedNotice] = useState('');
+  const [signOutOpen, setSignOutOpen] = useState(false);
 
   const [profile, setProfile] = useState(() => {
     const stored = readStorage(USER_KEY, null);
@@ -38,6 +45,10 @@ export default function AccountPage() {
       memberSince: stored?.memberSince || '2026',
     };
   });
+
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [profileDraft, setProfileDraft] = useState(profile);
+  const [profileError, setProfileError] = useState('');
 
   const [address, setAddress] = useState(() => {
     const stored = readStorage(ADDRESS_KEY, null);
@@ -54,30 +65,141 @@ export default function AccountPage() {
     next: '',
     confirm: '',
   });
+  const [showPass, setShowPass] = useState({
+    current: false,
+    next: false,
+    confirm: false,
+  });
   const [passwordError, setPasswordError] = useState('');
+
+  const [otpChallenge, setOtpChallenge] = useState({
+    open: false,
+    mode: null,
+  });
 
   const orders = readStorage(ORDERS_KEY, []);
   const cartItems = readStorage(CART_KEY, []);
 
   const flashNotice = (message) => {
     setSavedNotice(message);
-    setTimeout(() => setSavedNotice(''), 3000);
+    setTimeout(() => setSavedNotice(''), 3500);
   };
 
-  const handleProfileChange = (e) => {
+  const startProfileEdit = () => {
+    setProfileDraft(profile);
+    setProfileError('');
+    setIsEditingProfile(true);
+  };
+
+  const cancelProfileEdit = () => {
+    setProfileDraft(profile);
+    setProfileError('');
+    setIsEditingProfile(false);
+  };
+
+  const handleProfileDraftChange = (e) => {
     const { name, value } = e.target;
     if (name === 'phone') {
       const numeric = value.replace(/\D/g, '').slice(0, 11);
-      setProfile((prev) => ({ ...prev, phone: numeric }));
+      setProfileDraft((prev) => ({ ...prev, phone: numeric }));
       return;
     }
-    setProfile((prev) => ({ ...prev, [name]: value }));
+    setProfileDraft((prev) => ({ ...prev, [name]: value }));
   };
 
-  const saveProfile = (e) => {
+  const requestProfileSave = (e) => {
     e.preventDefault();
-    localStorage.setItem(USER_KEY, JSON.stringify(profile));
-    flashNotice('PROFILE DETAILS UPDATED.');
+    setProfileError('');
+
+    if (!profileDraft.fullName.trim()) {
+      setProfileError('Full name cannot be empty.');
+      return;
+    }
+
+    if (!profileDraft.email.trim() || !profileDraft.email.includes('@')) {
+      setProfileError('Enter a valid registered email address.');
+      return;
+    }
+
+    if (profileDraft.phone && !/^09\d{9}$/.test(profileDraft.phone)) {
+      setProfileError('Phone number must be 11 digits starting with 09.');
+      return;
+    }
+
+    const hasChanges =
+      profileDraft.fullName.trim() !== profile.fullName ||
+      profileDraft.email.trim() !== profile.email ||
+      profileDraft.phone !== profile.phone;
+
+    if (!hasChanges) {
+      setIsEditingProfile(false);
+      return;
+    }
+
+    setOtpChallenge({ open: true, mode: 'profile' });
+  };
+
+  const passwordRules = {
+    length: passwords.next.length >= 8,
+    upper: /[A-Z]/.test(passwords.next),
+    number: /\d/.test(passwords.next),
+    special: /[^A-Za-z0-9]/.test(passwords.next),
+  };
+
+  const allPasswordRulesMet =
+    passwordRules.length &&
+    passwordRules.upper &&
+    passwordRules.number &&
+    passwordRules.special;
+
+  const requestPasswordUpdate = (e) => {
+    e.preventDefault();
+    setPasswordError('');
+
+    if (!passwords.current.trim()) {
+      setPasswordError('Enter your current password to continue.');
+      return;
+    }
+
+    if (!allPasswordRulesMet) {
+      setPasswordError('New password does not meet all security requirements.');
+      return;
+    }
+
+    if (passwords.current === passwords.next) {
+      setPasswordError('New password must be different from your current password.');
+      return;
+    }
+
+    if (passwords.next !== passwords.confirm) {
+      setPasswordError('New password and confirmation do not match.');
+      return;
+    }
+
+    setOtpChallenge({ open: true, mode: 'password' });
+  };
+
+  const handleOtpVerified = () => {
+    if (otpChallenge.mode === 'profile') {
+      const updated = {
+        ...profileDraft,
+        fullName: profileDraft.fullName.trim(),
+        email: profileDraft.email.trim(),
+      };
+      setProfile(updated);
+      setProfileDraft(updated);
+      localStorage.setItem(USER_KEY, JSON.stringify(updated));
+      setIsEditingProfile(false);
+      setOtpChallenge({ open: false, mode: null });
+      flashNotice('IDENTITY VERIFIED — PROFILE INFORMATION UPDATED.');
+      return;
+    }
+
+    if (otpChallenge.mode === 'password') {
+      setPasswords({ current: '', next: '', confirm: '' });
+      setOtpChallenge({ open: false, mode: null });
+      flashNotice('IDENTITY VERIFIED — ACCOUNT PASSWORD UPDATED.');
+    }
   };
 
   const handleAddressChange = (e) => {
@@ -94,27 +216,6 @@ export default function AccountPage() {
     e.preventDefault();
     localStorage.setItem(ADDRESS_KEY, JSON.stringify(address));
     flashNotice('DEFAULT DELIVERY ADDRESS SAVED.');
-  };
-
-  const savePassword = (e) => {
-    e.preventDefault();
-    setPasswordError('');
-
-    if (passwords.next.length < 6) {
-      setPasswordError('New password must be at least 6 characters.');
-      return;
-    }
-    if (passwords.next !== passwords.confirm) {
-      setPasswordError('New passwords do not match.');
-      return;
-    }
-
-    setPasswords({ current: '', next: '', confirm: '' });
-    flashNotice('PASSWORD UPDATED.');
-  };
-
-  const handleSignOut = () => {
-    navigate('/');
   };
 
   const totalSpent = orders.reduce((sum, order) => sum + Number(order.total || 0), 0);
@@ -193,7 +294,7 @@ export default function AccountPage() {
             <button
               type="button"
               className="account-signout-btn"
-              onClick={handleSignOut}
+              onClick={() => setSignOutOpen(true)}
             >
               <LogOut size={15} />
               <span>SIGN OUT</span>
@@ -208,10 +309,31 @@ export default function AccountPage() {
                     <span className="module-index">01 / IDENTITY</span>
                     <h2>PERSONAL INFORMATION</h2>
                   </div>
-                  <span className="module-tag">PRDX ID</span>
+
+                  {!isEditingProfile ? (
+                    <button
+                      type="button"
+                      className="module-edit-btn"
+                      onClick={startProfileEdit}
+                    >
+                      <Edit3 size={13} />
+                      <span>UNLOCK & EDIT</span>
+                    </button>
+                  ) : (
+                    <span className="module-tag is-unlocked">OTP REQUIRED TO SAVE</span>
+                  )}
                 </div>
 
-                <form className="account-form" onSubmit={saveProfile}>
+                <div className="security-notice-bar">
+                  <Lock size={14} />
+                  <span>
+                    {isEditingProfile
+                      ? 'EDIT MODE ACTIVE. SAVING CHANGES REQUIRES A 6-DIGIT OTP SENT TO YOUR REGISTERED ACCOUNT.'
+                      : 'FIELDS ARE LOCKED BY DEFAULT TO PROTECT YOUR REGISTERED IDENTITY.'}
+                  </span>
+                </div>
+
+                <form className="account-form" onSubmit={requestProfileSave}>
                   <div className="account-form-grid">
                     <label className="account-field">
                       <span>FULL NAME</span>
@@ -219,8 +341,9 @@ export default function AccountPage() {
                         type="text"
                         name="fullName"
                         placeholder="Enter your full name"
-                        value={profile.fullName}
-                        onChange={handleProfileChange}
+                        value={isEditingProfile ? profileDraft.fullName : profile.fullName}
+                        onChange={handleProfileDraftChange}
+                        disabled={!isEditingProfile}
                         required
                       />
                     </label>
@@ -234,29 +357,44 @@ export default function AccountPage() {
                         pattern="[0-9]{11}"
                         maxLength={11}
                         placeholder="09XXXXXXXXX"
-                        value={profile.phone}
-                        onChange={handleProfileChange}
+                        value={isEditingProfile ? profileDraft.phone : profile.phone}
+                        onChange={handleProfileDraftChange}
+                        disabled={!isEditingProfile}
                       />
                     </label>
 
                     <label className="account-field field-span-2">
-                      <span>EMAIL ADDRESS</span>
+                      <span>REGISTERED EMAIL ADDRESS</span>
                       <input
                         type="email"
                         name="email"
                         placeholder="Enter your email address"
-                        value={profile.email}
-                        onChange={handleProfileChange}
+                        value={isEditingProfile ? profileDraft.email : profile.email}
+                        onChange={handleProfileDraftChange}
+                        disabled={!isEditingProfile}
                         required
                       />
                     </label>
                   </div>
 
-                  <div className="account-form-actions">
-                    <button type="submit" className="account-primary-btn">
-                      SAVE CHANGES
-                    </button>
-                  </div>
+                  {profileError && (
+                    <p className="account-error">{profileError}</p>
+                  )}
+
+                  {isEditingProfile && (
+                    <div className="account-form-actions">
+                      <button
+                        type="button"
+                        className="account-secondary-btn"
+                        onClick={cancelProfileEdit}
+                      >
+                        CANCEL
+                      </button>
+                      <button type="submit" className="account-primary-btn">
+                        VERIFY OTP & SAVE
+                      </button>
+                    </div>
+                  )}
                 </form>
               </div>
             )}
@@ -424,46 +562,105 @@ export default function AccountPage() {
                     <span className="module-index">04 / CREDENTIALS</span>
                     <h2>PASSWORD & SECURITY</h2>
                   </div>
-                  <span className="module-tag">ENCRYPTED</span>
+                  <span className="module-tag is-unlocked">2FA PROTECTED</span>
                 </div>
 
-                <form className="account-form" onSubmit={savePassword}>
+                <div className="security-notice-bar">
+                  <ShieldCheck size={14} />
+                  <span>
+                    CHANGING YOUR PASSWORD REQUIRES CURRENT CREDENTIALS, STRONG
+                    PASSWORD COMPLIANCE, AND OTP VERIFICATION.
+                  </span>
+                </div>
+
+                <form className="account-form" onSubmit={requestPasswordUpdate}>
                   <div className="account-form-grid">
                     <label className="account-field field-span-2">
                       <span>CURRENT PASSWORD</span>
-                      <input
-                        type="password"
-                        value={passwords.current}
-                        onChange={(e) =>
-                          setPasswords((p) => ({ ...p, current: e.target.value }))
-                        }
-                        required
-                      />
+                      <div className="account-password-wrap">
+                        <input
+                          type={showPass.current ? 'text' : 'password'}
+                          value={passwords.current}
+                          onChange={(e) =>
+                            setPasswords((p) => ({ ...p, current: e.target.value }))
+                          }
+                          required
+                        />
+                        <button
+                          type="button"
+                          className="account-eye-btn"
+                          aria-label="Toggle current password"
+                          onClick={() =>
+                            setShowPass((s) => ({ ...s, current: !s.current }))
+                          }
+                        >
+                          {showPass.current ? <Eye size={16} /> : <EyeOff size={16} />}
+                        </button>
+                      </div>
                     </label>
 
                     <label className="account-field">
                       <span>NEW PASSWORD</span>
-                      <input
-                        type="password"
-                        value={passwords.next}
-                        onChange={(e) =>
-                          setPasswords((p) => ({ ...p, next: e.target.value }))
-                        }
-                        required
-                      />
+                      <div className="account-password-wrap">
+                        <input
+                          type={showPass.next ? 'text' : 'password'}
+                          value={passwords.next}
+                          onChange={(e) =>
+                            setPasswords((p) => ({ ...p, next: e.target.value }))
+                          }
+                          required
+                        />
+                        <button
+                          type="button"
+                          className="account-eye-btn"
+                          aria-label="Toggle new password"
+                          onClick={() =>
+                            setShowPass((s) => ({ ...s, next: !s.next }))
+                          }
+                        >
+                          {showPass.next ? <Eye size={16} /> : <EyeOff size={16} />}
+                        </button>
+                      </div>
                     </label>
 
                     <label className="account-field">
                       <span>CONFIRM NEW PASSWORD</span>
-                      <input
-                        type="password"
-                        value={passwords.confirm}
-                        onChange={(e) =>
-                          setPasswords((p) => ({ ...p, confirm: e.target.value }))
-                        }
-                        required
-                      />
+                      <div className="account-password-wrap">
+                        <input
+                          type={showPass.confirm ? 'text' : 'password'}
+                          value={passwords.confirm}
+                          onChange={(e) =>
+                            setPasswords((p) => ({ ...p, confirm: e.target.value }))
+                          }
+                          required
+                        />
+                        <button
+                          type="button"
+                          className="account-eye-btn"
+                          aria-label="Toggle confirm password"
+                          onClick={() =>
+                            setShowPass((s) => ({ ...s, confirm: !s.confirm }))
+                          }
+                        >
+                          {showPass.confirm ? <Eye size={16} /> : <EyeOff size={16} />}
+                        </button>
+                      </div>
                     </label>
+                  </div>
+
+                  <div className="password-policy-grid">
+                    <span className={passwordRules.length ? 'met' : ''}>
+                      {passwordRules.length ? '✓' : '•'} MINIMUM 8 CHARACTERS
+                    </span>
+                    <span className={passwordRules.upper ? 'met' : ''}>
+                      {passwordRules.upper ? '✓' : '•'} AT LEAST 1 UPPERCASE LETTER
+                    </span>
+                    <span className={passwordRules.number ? 'met' : ''}>
+                      {passwordRules.number ? '✓' : '•'} AT LEAST 1 NUMBER
+                    </span>
+                    <span className={passwordRules.special ? 'met' : ''}>
+                      {passwordRules.special ? '✓' : '•'} AT LEAST 1 SPECIAL CHARACTER
+                    </span>
                   </div>
 
                   {passwordError && (
@@ -472,7 +669,7 @@ export default function AccountPage() {
 
                   <div className="account-form-actions">
                     <button type="submit" className="account-primary-btn">
-                      UPDATE PASSWORD
+                      VERIFY OTP & UPDATE PASSWORD
                     </button>
                   </div>
                 </form>
@@ -481,6 +678,39 @@ export default function AccountPage() {
           </section>
         </div>
       </section>
+
+      <OtpVerificationModal
+        open={otpChallenge.open}
+        title={
+          otpChallenge.mode === 'profile'
+            ? 'VERIFY PROFILE CHANGE'
+            : 'VERIFY PASSWORD CHANGE'
+        }
+        actionLabel={
+          otpChallenge.mode === 'profile'
+            ? 'updating your registered identity details'
+            : 'updating your account password'
+        }
+        registeredEmail={profile.email}
+        registeredPhone={profile.phone}
+        onVerified={handleOtpVerified}
+        onCancel={() => setOtpChallenge({ open: false, mode: null })}
+      />
+
+      <ConfirmModal
+        open={signOutOpen}
+        eyebrow="PARADOX / SESSION"
+        title="SIGN OUT?"
+        message="Are you sure you want to sign out of your PARADOX account?"
+        confirmLabel="SIGN OUT"
+        cancelLabel="CANCEL"
+        danger
+        onConfirm={() => {
+          setSignOutOpen(false);
+          navigate('/');
+        }}
+        onCancel={() => setSignOutOpen(false)}
+      />
     </main>
   );
 }
